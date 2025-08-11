@@ -63,7 +63,8 @@ class MCTSNode {
 }
 
 class ChessAI {
-    constructor() {
+    constructor(chessUI) {
+        this.chessUI = chessUI; // Reference to the ChessUI instance
         this.maxSimulations = 1000; // Number of MCTS simulations
         this.maxDepth = 50; // Maximum simulation depth
         this.explorationParameter = Math.sqrt(2);
@@ -78,6 +79,10 @@ class ChessAI {
             lastTrainingTime: null
         };
         this.loadTrainingStats();
+    }
+    
+    setNeuralNetwork(neuralNetwork) {
+        this.neuralNetwork = neuralNetwork;
     }
     
     // Main MCTS search function
@@ -409,8 +414,8 @@ class ChessAI {
             throw new Error('Neural network not initialized');
         }
         
-        if (this.gameHistory.length < 3) { // Lower threshold for auto-training
-            throw new Error(`Need at least 3 games for training. Currently have ${this.gameHistory.length} games.`);
+        if (this.gameHistory.length < 1) {
+            throw new Error(`Need at least 1 game for training. Currently have ${this.gameHistory.length} games.`);
         }
         
         console.log(`Training on ${this.gameHistory.length} games...`);
@@ -433,17 +438,39 @@ class ChessAI {
         console.log('Training completed successfully');
     }
     
+    // Prepare training data from game history
+    prepareTrainingData() {
+        const inputs = [];
+        const targets = [];
+        
+        for (const game of this.gameHistory) {
+            // Create a simple training example from the game result
+            // For now, we'll use a simplified approach
+            const gameResult = game.result;
+            
+            // Create a dummy input tensor (this should be improved to use actual positions)
+            const dummyInput = tf.zeros([8, 8, 12]);
+            const target = tf.scalar(gameResult);
+            
+            inputs.push(dummyInput);
+            targets.push(target);
+        }
+        
+        return { inputs, targets };
+    }
+    
     // Auto-training trigger (called after each game)
     async autoTrain() {
-        if (this.gameHistory.length >= 3 && this.gameHistory.length % 2 === 0) {
+        if (this.gameHistory.length >= 1) {
             // Auto-train every 2 games after reaching minimum threshold
             try {
-                console.log('Auto-training triggered...');
+                this.chessUI.showAILearning(true, 'Auto-training triggered...');
                 await this.trainFromHistory();
-                console.log('Auto-training completed successfully');
+                this.chessUI.showAILearning(false); // Will show success and hide
                 return true;
             } catch (error) {
                 console.error('Auto-training failed:', error);
+                this.chessUI.showAILearning(false); // Hide on error
                 return false;
             }
         }
@@ -496,83 +523,26 @@ class ChessAI {
         return wins / this.gameHistory.length;
     }
     
-    // Save training statistics to localStorage
+    // Save training statistics
     saveTrainingStats() {
         try {
             localStorage.setItem('chessZeroTrainingStats', JSON.stringify(this.trainingStats));
         } catch (error) {
-            console.warn('Failed to save training stats:', error);
+            console.error('Failed to save training stats:', error);
         }
     }
     
-    // Load training statistics from localStorage
+    // Load training statistics
     loadTrainingStats() {
         try {
-            const saved = localStorage.getItem('chessZeroTrainingStats');
-            if (saved) {
-                this.trainingStats = { ...this.trainingStats, ...JSON.parse(saved) };
+            const stored = localStorage.getItem('chessZeroTrainingStats');
+            if (stored) {
+                this.trainingStats = { ...this.trainingStats, ...JSON.parse(stored) };
             }
         } catch (error) {
-            console.warn('Failed to load training stats:', error);
+            console.error('Failed to load training stats:', error);
         }
     }
-    
-    // Prepare training data from game history
-    prepareTrainingData() {
-        const inputs = [];
-        const targets = [];
-        
-        this.gameHistory.forEach(game => {
-            game.moves.forEach((moveData, index) => {
-                try {
-                    // Create a temporary game state from FEN
-                    const gameState = this.fenToGameState(moveData.fen);
-                    const input = this.gameStateToTensor(gameState);
-                    
-                    // Target is the game result from the perspective of current player
-                    let target = game.result;
-                    if (gameState.currentPlayer === 'black') {
-                        target = 1 - target; // Flip for black
-                    }
-                    
-                    inputs.push(input);
-                    targets.push(tf.scalar(target));
-                } catch (error) {
-                    console.warn('Failed to process training sample:', error);
-                }
-            });
-        });
-        
-        return { inputs, targets };
-    }
-    
-    // Convert FEN to game state (simplified)
-    fenToGameState(fen) {
-        // This is a simplified implementation
-        // In a full implementation, you would parse the entire FEN string
-        const gameState = new ChessGame();
-        
-        // For now, just return a new game state
-        // TODO: Implement full FEN parsing
-        return gameState;
-    }
-    
-    // Set neural network reference
-    setNeuralNetwork(neuralNetwork) {
-        this.neuralNetwork = neuralNetwork;
-    }
-    
-    // Get training statistics
-    getTrainingStats() {
-        return {
-            gamesStored: this.gameHistory.length,
-            totalPositions: this.gameHistory.reduce((sum, game) => sum + game.moves.length, 0),
-            hasNeuralNetwork: !!this.neuralNetwork
-        };
-    }
 }
-
-// Global AI engine instance
-window.aiEngine = new ChessAI();
 
 

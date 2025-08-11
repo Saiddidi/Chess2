@@ -471,14 +471,6 @@ class ChessNeuralNetwork {
     }
 }
 
-// Initialize neural network when page loads
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        window.neuralNetwork = new ChessNeuralNetwork();
-        console.log('Neural network initialized');
-    } catch (error) {
-        console.error('Failed to initialize neural network:', error);
-    }
-});
+
 
 

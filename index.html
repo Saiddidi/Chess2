@@ -47,6 +47,43 @@
             Ready to play! Click "New Game" to start.
         </div>
         
+        <!-- AI Learning Indicator -->
+        <div class="ai-learning-indicator" id="aiLearningIndicator" style="display: none;">
+            <div class="learning-icon">🧠</div>
+            <div class="learning-text">
+                <div class="learning-title">AI is Learning!</div>
+                <div class="learning-details" id="learningDetails">Processing game data...</div>
+            </div>
+            <div class="learning-animation">
+                <div class="pulse-dot"></div>
+                <div class="pulse-dot"></div>
+                <div class="pulse-dot"></div>
+            </div>
+        </div>
+        
+        <!-- AI Stats Display -->
+        <div class="ai-stats" id="aiStats">
+            <div class="stats-title">🤖 AI Learning Progress</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Games Played:</span>
+                    <span class="stat-value" id="gamesCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Training Sessions:</span>
+                    <span class="stat-value" id="trainingCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">AI Level:</span>
+                    <span class="stat-value" id="aiLevel">Beginner</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Last Training:</span>
+                    <span class="stat-value" id="lastTraining">Never</span>
+                </div>
+            </div>
+        </div>
+        
         <!-- Training Progress Indicator -->
         <div class="training-progress" id="trainingProgress" style="display: none;">
             <div>Training AI Neural Network...</div>

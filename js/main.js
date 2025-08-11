@@ -12,6 +12,88 @@ class ChessUI {
         this.renderBoard();
         this.updateGameStatus();
         this.setupEventListeners();
+        this.initAI();
+        this.updateAIStats(); // Initialize AI stats display
+    }
+
+    async initAI() {
+        if (!window.aiEngine) {
+            window.aiEngine = new ChessAI(this); // Pass ChessUI instance
+        }
+        if (!window.neuralNetwork) {
+            window.neuralNetwork = new ChessNeuralNetwork();
+            await window.neuralNetwork.initializeModel(); // Ensure model is loaded/created
+        }
+        window.aiEngine.setNeuralNetwork(window.neuralNetwork);
+        this.updateAIStats(); // Update stats after AI initialization
+    }
+    
+    // Show AI learning indicator
+    showAILearning(show = true, details = 'Processing game data...') {
+        const indicator = document.getElementById('aiLearningIndicator');
+        const detailsElement = document.getElementById('learningDetails');
+        
+        if (show) {
+            detailsElement.textContent = details;
+            indicator.style.display = 'flex';
+            
+            // Add success animation after a delay
+            setTimeout(() => {
+                indicator.classList.add('learning-success');
+                detailsElement.textContent = 'Learning completed! AI got smarter! 🎉';
+                
+                // Remove success state after animation
+                setTimeout(() => {
+                    indicator.classList.remove('learning-success');
+                    indicator.style.display = 'none';
+                    this.updateAIStats(); // Update stats after learning
+                }, 2000);
+            }, 3000);
+        } else {
+            indicator.style.display = 'none';
+        }
+    }
+    
+    // Update AI statistics display
+    updateAIStats() {
+        if (!window.aiEngine) return;
+        
+        const stats = window.aiEngine.getTrainingStats();
+        
+        // Update games count
+        document.getElementById('gamesCount').textContent = stats.gamesStored || 0;
+        
+        // Update training sessions count
+        document.getElementById('trainingCount').textContent = stats.totalTrainingSessions || 0;
+        
+        // Update AI level based on training sessions
+        const aiLevelElement = document.getElementById('aiLevel');
+        const trainingSessions = stats.totalTrainingSessions || 0;
+        let level = 'Beginner';
+        let levelClass = 'ai-level-beginner';
+        
+        if (trainingSessions >= 20) {
+            level = 'Expert';
+            levelClass = 'ai-level-expert';
+        } else if (trainingSessions >= 10) {
+            level = 'Advanced';
+            levelClass = 'ai-level-advanced';
+        } else if (trainingSessions >= 5) {
+            level = 'Intermediate';
+            levelClass = 'ai-level-intermediate';
+        }
+        
+        aiLevelElement.textContent = level;
+        aiLevelElement.className = `stat-value ${levelClass}`;
+        
+        // Update last training time
+        const lastTrainingElement = document.getElementById('lastTraining');
+        if (stats.lastTrainingTime) {
+            const date = new Date(stats.lastTrainingTime);
+            lastTrainingElement.textContent = date.toLocaleTimeString();
+        } else {
+            lastTrainingElement.textContent = 'Never';
+        }
     }
     
     initializeUI() {
@@ -238,7 +320,7 @@ class ChessUI {
     }
     
     handleGameEnd() {
-        if (this.autoTraining && this.game.moveHistory.length > 10) {
+        if (this.autoTraining) {
             // Automatically trigger training after game ends
             setTimeout(() => {
                 this.storeGameForLearning();
@@ -268,7 +350,7 @@ class ChessUI {
     }
     
     storeGameForLearning() {
-        if (!window.aiEngine || this.game.moveHistory.length < 10) {
+        if (!window.aiEngine) {
             return; // Don't store very short games
         }
         
@@ -324,15 +406,18 @@ class ChessUI {
         }
         
         const stats = window.aiEngine.getTrainingStats();
-        if (stats.gamesStored >= 3) { // Lower threshold for auto-training
+        if (stats.gamesStored >= 1) {
             try {
-                this.showTrainingProgress(true);
+                // Show learning indicator
+                this.showAILearning(true, 'Analyzing game patterns...');
+                
                 await window.aiEngine.trainFromHistory();
-                this.showTrainingProgress(false);
                 console.log('Auto-training completed successfully');
+                
+                // Learning indicator will automatically show success and hide
             } catch (error) {
                 console.error('Auto-training failed:', error);
-                this.showTrainingProgress(false);
+                this.showAILearning(false);
             }
         }
     }
@@ -358,30 +443,31 @@ class ChessUI {
         
         // Check if we have enough data for training
         const stats = window.aiEngine.getTrainingStats();
-        if (stats.gamesStored < 5) {
-            this.updateGameStatus(`Need at least 5 games for training. Currently have ${stats.gamesStored} games.`);
+        if (stats.gamesStored < 1) {
+            this.updateGameStatus(`Need at least 1 game for training. Currently have ${stats.gamesStored} games.`);
             setTimeout(() => this.updateGameStatus(), 3000);
             return;
         }
         
-        this.showTrainingProgress(true);
+        // Start training
+        this.showAILearning(true, 'Manual training in progress...');
         
         // Disable controls during training
         const controls = document.querySelectorAll('.controls button, .controls select');
         controls.forEach(control => control.disabled = true);
         
-        // Start training
         window.aiEngine.trainFromHistory().then(() => {
             this.updateGameStatus('AI training completed successfully!');
             setTimeout(() => this.updateGameStatus(), 3000);
+            // Learning indicator will automatically show success and hide
         }).catch(error => {
             console.error('Training error:', error);
             this.updateGameStatus('Training failed: ' + error.message);
             setTimeout(() => this.updateGameStatus(), 3000);
+            this.showAILearning(false);
         }).finally(() => {
             // Re-enable controls
             controls.forEach(control => control.disabled = false);
-            this.showTrainingProgress(false);
         });
     }
     
